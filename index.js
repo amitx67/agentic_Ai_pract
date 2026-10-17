@@ -1,51 +1,37 @@
-
-import express from "express";
-import dotenv from "dotenv";
+import express from "express"
+import dotenv from "dotenv"
+dotenv.config()
+import { GoogleGenAI } from "@google/genai";
 import { ChatGoogle } from "@langchain/google";
+import { ChatGroq } from "@langchain/groq"
+const app = express()
 
-dotenv.config();
+const port = process.env.PORT || 5000
 
-const app = express();
-app.use(express.json());
 
-const port = process.env.PORT || 5000;
+app.use(express.json())
 
-// Check API key
-if (!process.env.GOOGLE_API_KEY) {
-  throw new Error("GOOGLE_API_KEY is missing from .env");
-}
+app.post("/chat",async (req,res)=>{
+    const {prompt}=req.body
+    const ai=new ChatGroq({
+        model:"openai/gpt-oss-120b"
+    })
 
-// Initialize Gemini
-const llm = new ChatGoogle({
-  model: "gemini-3.6-flash",
-  apiKey: process.env.GOOGLE_API_KEY,
-});
 
-app.post("/api/v1/chat", async (req, res) => {
-  try {
-    const { prompt } = req.body;
+    const result=await ai.invoke([
+        {
+            role:"system",
+            content:"you are jarvis and my assistant"
+        },
+        {
+            role:"human",
+            content:prompt
+        }
+    ])
+    return res.json(result.content)
+})
 
-    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
-      return res.status(400).json({
-        error: "Please provide a valid prompt.",
-      });
-    }
-
-    const result = await llm.invoke(prompt);
-
-    return res.status(200).json({
-      response: result.content,
-    });
-  } catch (error) {
-    console.error("Google API Error:", error);
-
-    return res.status(500).json({
-      error: "Failed to generate a response.",
-      details: error.message,
-    });
-  }
-});
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+    console.log("server started at ", port)
+})
