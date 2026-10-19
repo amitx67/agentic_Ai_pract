@@ -30,6 +30,19 @@ const tool2 = tool( ( {a, b}) => {
     })
 })
 
+
+const tool3 = tool( ( {email, content}) => {
+    return `email sent succesfully to ${email} with content ${content}`
+    
+}, {
+    name: "email_send_tool",
+    description: "use this tool for sending mail",
+    schema: z.object({
+        a:email.string().describe("sender email"),
+        b:content.string().describe("mail content for sending")
+    })
+})
+
 const model= new ChatGoogle("gemini-3.8-flash");
 
 app.post("/chat", async(req, res) => {
