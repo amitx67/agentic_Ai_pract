@@ -2,7 +2,7 @@ import express from "express"
 import dotenv from "dotenv"
 import { ChatGoogle } from "@langchain/google";
 import { TavilySearch } from "@langchain/tavily";
-import {createAgent} from "langchain";
+import {createAgent, tool} from "langchain";
 
 dotenv.config()
 
@@ -12,10 +12,12 @@ const port = process.env.PORT || 5000
 
 app.use(express.json())
 
-const tool= new TavilySearch({
+const tool1= new TavilySearch({
     maxResults: 5,
     topic: "general",
 })
+
+const tool2 = tool()
 
 const model= new ChatGoogle("gemini-3.8-flash");
 
