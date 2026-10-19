@@ -3,6 +3,7 @@ import dotenv from "dotenv"
 import { ChatGoogle } from "@langchain/google";
 import { TavilySearch } from "@langchain/tavily";
 import {createAgent, tool} from "langchain";
+import z from "zod";
 
 dotenv.config()
 
@@ -17,7 +18,17 @@ const tool1= new TavilySearch({
     topic: "general",
 })
 
-const tool2 = tool()
+const tool2 = tool( ( {a, b}) => {
+    return `addition of ${a} and ${b} is : 8`
+    
+}, {
+    name: "addition_tool",
+    description: "use this tool for adding two numbers",
+    schema: z.object({
+        a:z.number(),
+        b:z.number()
+    })
+})
 
 const model= new ChatGoogle("gemini-3.8-flash");
 
@@ -25,7 +36,7 @@ app.post("/chat", async(req, res) => {
     const{prompt}= req.body;
     const agent = createAgent({
         model,
-        tools: [tool]
+        tools: [tool1, tool2]
     })
     
     const result = await agent.invoke({
