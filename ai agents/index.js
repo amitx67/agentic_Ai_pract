@@ -38,8 +38,8 @@ const tool3 = tool( ( {email, content}) => {
     name: "email_send_tool",
     description: "use this tool for sending mail",
     schema: z.object({
-        a:email.string().describe("sender email"),
-        b:content.string().describe("mail content for sending")
+        email: z.string().describe("sender email"),
+        content:z.string().describe("mail content for sending")
     })
 })
 
