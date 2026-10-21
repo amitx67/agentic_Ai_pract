@@ -55,7 +55,7 @@ const tools = [tool1, tool2, tool3];
 
 // Google Gemini model with tools
 const model = new ChatGoogle({
-    model: "gemini-3.8-flash",
+    model: "gemini-3.6-flash",
 }).bindTools(tools);
 
 // Tool execution node
