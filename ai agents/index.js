@@ -2,8 +2,10 @@ import express from "express"
 import dotenv from "dotenv"
 import { ChatGoogle } from "@langchain/google";
 import { TavilySearch } from "@langchain/tavily";
-import {createAgent, tool} from "langchain";
+import {AIMessage, createAgent, HumanMessage, tool, ToolMessage} from "langchain";
 import z from "zod";
+import { toolNode} from "@langchain/langgraph/prebuilt";
+import { MessagesAnnotation, StateGraph } from "@langchain/langgraph";
 
 dotenv.config()
 
@@ -43,27 +45,46 @@ const tool3 = tool( ( {email, content}) => {
     })
 })
 
-const model= new ChatGoogle("gemini-3.8-flash");
+const tools = [tool1, tool2, tool3]
+
+const model= new ChatGoogle("gemini-3.8-flash").bindTools()
+
+const toolNode = new ToolNode(tools)
+
+const agent= async (state) => {
+    const result = await model.invoke({
+        ...state.messages
+    })
+
+    return {
+        messages: [result]
+    }
+
+}
+
+const shouldContinue = async(state) => {
+    if (state.messages.tool_calls.length>0){
+        
+    }
+
+}
+
+// state: [
+//     HumanMessage: "",
+//     AIMessage: "", 
+//     ToolMessage: "", 
+//     AIMessage: ""
+// ]
+
+const graph =new StateGraph(MessagesAnnotation)
+.addNode("agent", agent)
+.addNode("tool_node", toolNode)
+.addEdge("__start__", "agent")
+.addConditionalEdges("agent", shouldContinue)
+
 
 app.post("/chat", async(req, res) => {
-    const{prompt}= req.body;
-    const agent = createAgent({
-        model,
-        tools: [tool1, tool2]
-    })
     
-    const result = await agent.invoke({
-        messages: [
-            {
-                role: "user",
-                content: prompt,
-            }]
-    })
-
-    
-    return res.json(result.messages[result.messages.length-1].content)
-
-
 })
 
 app.listen(port, () => {
