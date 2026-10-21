@@ -6,7 +6,11 @@ import { TavilySearch } from "@langchain/tavily";
 import { HumanMessage, tool } from "langchain";
 import { z } from "zod";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { MessagesAnnotation, StateGraph } from "@langchain/langgraph";
+import {
+    MessagesAnnotation,
+    StateGraph,
+    MemorySaver,
+} from "@langchain/langgraph";
 
 dotenv.config();
 
@@ -14,6 +18,9 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(express.json());
+
+// Conversation memory
+const checkpointer = new MemorySaver();
 
 // Search tool
 const tool1 = new TavilySearch({
@@ -39,7 +46,7 @@ const tool2 = tool(
 // Email tool (demo only; does not send a real email)
 const tool3 = tool(
     ({ email, content }) => {
-        return `Email sending requested for ${email} with content: ${content}. Note: this is a demo and no email was actually sent.`;
+        return `Email sending requested for ${email} with content: ${content}. No email was actually sent.`;
     },
     {
         name: "email_send_tool",
@@ -88,12 +95,14 @@ const graph = new StateGraph(MessagesAnnotation)
     .addEdge("__start__", "agent")
     .addConditionalEdges("agent", shouldContinue)
     .addEdge("tool_node", "agent")
-    .compile();
+    .compile({
+        checkpointer,
+    });
 
 // Chat API
 app.post("/chat", async (req, res) => {
     try {
-        const { prompt } = req.body ?? {};
+        const { prompt, thread_id } = req.body ?? {};
 
         if (typeof prompt !== "string" || !prompt.trim()) {
             return res.status(400).json({
@@ -101,16 +110,31 @@ app.post("/chat", async (req, res) => {
             });
         }
 
-        const result = await graph.invoke({
-            messages: [new HumanMessage(prompt)],
-        });
+        // Use the provided thread ID or a default thread
+        const threadId =
+            typeof thread_id === "string" && thread_id.trim()
+                ? thread_id.trim()
+                : "1";
+
+        const result = await graph.invoke(
+            {
+                messages: [new HumanMessage(prompt)],
+            },
+            {
+                configurable: {
+                    thread_id: threadId,
+                },
+            }
+        );
 
         const lastMessage =
             result.messages[result.messages.length - 1];
 
         return res.status(200).json({
+            thread_id: threadId,
             response: lastMessage.content,
         });
+
     } catch (error) {
         console.error("Chat API error:", error);
 
@@ -120,7 +144,7 @@ app.post("/chat", async (req, res) => {
     }
 });
 
-// Handle invalid JSON and other Express errors
+// Handle errors
 app.use((error, req, res, next) => {
     if (res.headersSent) {
         return next(error);
@@ -136,6 +160,7 @@ app.use((error, req, res, next) => {
     });
 });
 
+// Start server
 app.listen(port, () => {
     console.log(`Server started at http://localhost:${port}`);
 });
